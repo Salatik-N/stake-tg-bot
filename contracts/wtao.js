@@ -6,7 +6,7 @@ const web3Provider = new Web3.providers.WebsocketProvider(
 );
 const web3 = new Web3(web3Provider);
 
-const address = "0x3E0858F65aBF8606103f2c6B98138E4208cC795B";
+const address = "0x77E06c9eCCf2E797fd462A92B6D7642EF85b0A44";
 const contract = new web3.eth.Contract(abiWTAO, address);
 
 module.exports = contract;

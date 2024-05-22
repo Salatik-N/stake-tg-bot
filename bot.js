@@ -82,7 +82,7 @@ async function processEvent(event, contract) {
       tokenData = await getTBANKData('taobank');
     } else if (event.address.toLowerCase() == '0x966570a84709d693463cdd69dcadb0121b2c9d26'.toLowerCase() && event.returnValues.to.toLowerCase() == '0xDf7b328d07FD11F4CC7199E17719cde7D2971DA1'.toLowerCase()) {
       tokenData = await gettaoUSDData(event.address);
-    } else if (event.address.toLowerCase() == '0x77E06c9eCCf2E797fd462A92B6D7642EF85b0A44'.toLowerCase() && event.returnValues.to.toLowerCase() == '0x3E0858F65aBF8606103f2c6B98138E4208cC795B'.toLowerCase()) {
+    } else if (event.address.toLowerCase() == '0x3E0858F65aBF8606103f2c6B98138E4208cC795B'.toLowerCase() && event.returnValues.to.toLowerCase() == '0x3E0858F65aBF8606103f2c6B98138E4208cC795B'.toLowerCase()) {
       tokenData = await getwTAOData(event.address);
     } else {
       return;
