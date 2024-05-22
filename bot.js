@@ -22,29 +22,35 @@ const wtaoContract = require("./contracts/wtao");
 
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
-  const hello = `
+
+  // Проверка типа чата
+  if (msg.chat.type === "private") {
+    const hello = `
 Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
 
 <a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/staking'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a>
 `;
 
-  switch (msg.text) {
-    case "/start":
-      addChatId(chatId);
-      bot.sendMessage(
-        chatId,
-        "🎉 You have successfully subscribed to updates."
-      );
-      break;
-    case "/stop":
-      removeChatId(chatId);
-      bot.sendMessage(
-        chatId,
-        "You have successfully unsubscribed from updates."
-      );
-      break;
-    default:
-      bot.sendMessage(chatId, hello, { parse_mode: "HTML" });
+    switch (msg.text) {
+      case "/start":
+        addChatId(chatId);
+        bot.sendMessage(
+          chatId,
+          "🎉 You have successfully subscribed to updates.",
+          { parse_mode: "HTML" }
+        );
+        break;
+      case "/stop":
+        removeChatId(chatId);
+        bot.sendMessage(
+          chatId,
+          "You have successfully unsubscribed from updates.",
+          { parse_mode: "HTML" }
+        );
+        break;
+      default:
+        bot.sendMessage(chatId, hello, { parse_mode: "HTML" });
+    }
   }
 });
 
