@@ -23,7 +23,6 @@ const wtaoContract = require("./contracts/wtao");
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
 
-  // Проверка типа чата
   if (msg.chat.type === "private") {
     const hello = `
 Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
