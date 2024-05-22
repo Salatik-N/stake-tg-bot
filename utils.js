@@ -9,7 +9,7 @@ async function getTBANKData(tokenId) {
     const response = await fetch(url);
     const data = await response.json();
     return {
-      price:  Number(data[tokenId].usd),
+      price: Number(data[tokenId].usd),
     };
   } catch (error) {
     console.error("Failed to fetch token data:", error);
@@ -106,5 +106,5 @@ module.exports = {
   getSubscribedChats,
   getTBANKData,
   gettaoUSDData,
-  getwTAOData
+  getwTAOData,
 };
