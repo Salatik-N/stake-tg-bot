@@ -14,11 +14,21 @@ const {
 
 const tgChatsPath = path.join(__dirname, "tg-chats.json");
 const token = process.env.BOT_API_KEY;
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, {
+  polling: {
+    interval: 300,
+    autoStart: true,
+    params: {
+      timeout: 10,
+    },
+  },
+});
 
 const tbankContract = require("./contracts/tbank");
 const taousdContract = require("./contracts/taousd");
 const wtaoContract = require("./contracts/wtao");
+
+bot.on("polling_error", (msg) => console.log(msg));
 
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
