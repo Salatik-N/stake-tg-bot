@@ -91,7 +91,6 @@ async function processQueue() {
 }
 
 async function processEvent(event, contract) {
-  console.log(event);
   const subscribedChats = await getSubscribedChats();
 
   if (subscribedChats.length > 0) {
