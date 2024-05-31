@@ -53,42 +53,16 @@ Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
 
 bot.launch();
 
-let eventQueue = [];
-let isProcessing = false;
-let retryInterval = 5000;
-
 [tbankContract, taousdContract, wtaoContract].forEach((contract) => {
   contract.events
     .Transfer({
       fromBlock: "latest",
     })
-    .on("data", (event) => {
-      eventQueue.push({ event, contract });
-      console.log("Event added to queue:", event);
-      processQueue();
+    .on("data", async (event) => {
+      console.log("Event received:", event);
+      await processEvent(event, contract);
     });
 });
-
-async function processQueue() {
-  if (isProcessing) {
-    return;
-  }
-
-  isProcessing = true;
-
-  while (eventQueue.length > 0) {
-    const { event, contract } = eventQueue[0];
-    const success = await processEvent(event, contract);
-    if (success) {
-      console.log(`Event processed successfully: ${event.transactionHash}`);
-      eventQueue.shift();
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, retryInterval));
-    }
-  }
-
-  isProcessing = false;
-}
 
 async function processEvent(event, contract) {
   const subscribedChats = await getSubscribedChats();
@@ -124,11 +98,11 @@ async function processEvent(event, contract) {
         decimals = 9;
       } else {
         console.log("Not staking");
-        return true;
+        return;
       }
     } catch (error) {
       console.error("Failed to fetch token data:", error);
-      return false;
+      return;
     }
 
     const name = await contract.methods.name().call();
@@ -182,16 +156,8 @@ ${
           );
         })
       );
-      return true;
     } catch (error) {
-      if (error.code === "EAI_AGAIN" || error.code === "EFATAL") {
-        console.error("Network error occurred:", error);
-      } else {
-        console.error("Failed to send photo:", error);
-      }
-      return false;
+      console.error("Failed to send photo:", error);
     }
   }
-
-  return true;
 }
