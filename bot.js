@@ -1,5 +1,5 @@
 require("dotenv").config();
-const TelegramBot = require("node-telegram-bot-api");
+const { Telegraf } = require("telegraf");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -13,56 +13,44 @@ const {
   getwTAOData,
 } = require("./utils");
 
-const tgChatsPath = path.join(__dirname, "tg-chats.json");
 const token = process.env.BOT_API_KEY;
-const bot = new TelegramBot(token, {
-  polling: {
-    interval: 300,
-    autoStart: true,
-    params: {
-      timeout: 10,
-    },
-  },
-});
+const bot = new Telegraf(token);
 
 const tbankContract = require("./contracts/tbank");
 const taousdContract = require("./contracts/taousd");
 const wtaoContract = require("./contracts/wtao");
 
-bot.on("polling_error", (msg) => console.log(msg));
+bot.catch((err, ctx) => {
+  console.log(`Polling error for ${ctx.updateType}`, err);
+});
 
-bot.on("message", (msg) => {
-  const chatId = msg.chat.id;
+bot.start((ctx) => {
+  addChatId(ctx.chat.id);
+  ctx.reply("🎉 You have successfully subscribed to updates.", {
+    parse_mode: "HTML",
+  });
+});
 
-  if (msg.chat.type === "private") {
+bot.command("stop", (ctx) => {
+  removeChatId(ctx.chat.id);
+  ctx.reply("You have successfully unsubscribed from updates.", {
+    parse_mode: "HTML",
+  });
+});
+
+bot.on("message", (ctx) => {
+  const chatId = ctx.chat.id;
+  if (ctx.chat.type === "private") {
     const hello = `
 Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
 
-<a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/staking'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a>
+<a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/home'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a>
 `;
-
-    switch (msg.text) {
-      case "/start":
-        addChatId(chatId);
-        bot.sendMessage(
-          chatId,
-          "🎉 You have successfully subscribed to updates.",
-          { parse_mode: "HTML" }
-        );
-        break;
-      case "/stop":
-        removeChatId(chatId);
-        bot.sendMessage(
-          chatId,
-          "You have successfully unsubscribed from updates.",
-          { parse_mode: "HTML" }
-        );
-        break;
-      default:
-        bot.sendMessage(chatId, hello, { parse_mode: "HTML" });
-    }
+    ctx.reply(hello, { parse_mode: "HTML" });
   }
 });
+
+bot.launch();
 
 let eventQueue = [];
 let isProcessing = false;
@@ -75,6 +63,7 @@ let retryInterval = 5000;
     })
     .on("data", (event) => {
       eventQueue.push({ event, contract });
+      console.log("Event added to queue:", event);
       processQueue();
     });
 });
@@ -90,6 +79,7 @@ async function processQueue() {
     const { event, contract } = eventQueue[0];
     const success = await processEvent(event, contract);
     if (success) {
+      console.log(`Event processed successfully: ${event.transactionHash}`);
       eventQueue.shift();
     } else {
       await new Promise((resolve) => setTimeout(resolve, retryInterval));
@@ -106,36 +96,32 @@ async function processEvent(event, contract) {
   if (subscribedChats.length > 0) {
     let tokenData;
     let decimals;
-    let network;
 
     try {
       if (
-        event.address.toLowerCase() ==
+        event.address.toLowerCase() ===
           "0x05cbef357cb14f9861c01f90ac7d5c90ce0ef05e".toLowerCase() &&
-        event.returnValues.to.toLowerCase() ==
+        event.returnValues.to.toLowerCase() ===
           "0xfce658b6e7B93F9c8281bbFd93394fBfd04A1402".toLowerCase()
       ) {
         tokenData = await getTBANKData("taobank");
         decimals = 18;
-        network = "arb";
       } else if (
-        event.address.toLowerCase() ==
+        event.address.toLowerCase() ===
           "0x966570a84709d693463cdd69dcadb0121b2c9d26".toLowerCase() &&
-        event.returnValues.to.toLowerCase() ==
+        event.returnValues.to.toLowerCase() ===
           "0xDf7b328d07FD11F4CC7199E17719cde7D2971DA1".toLowerCase()
       ) {
         tokenData = await gettaoUSDData(event.address);
         decimals = 18;
-        network = "arb";
       } else if (
-        event.address.toLowerCase() ==
+        event.address.toLowerCase() ===
           "0x77e06c9eccf2e797fd462a92b6d7642ef85b0a44".toLowerCase() &&
-        event.returnValues.to.toLowerCase() ==
+        event.returnValues.to.toLowerCase() ===
           "0x3E0858F65aBF8606103f2c6B98138E4208cC795B".toLowerCase()
       ) {
         tokenData = await getwTAOData(event.address);
         decimals = 9;
-        network = "eth";
       } else {
         console.log("Not staking");
         return true;
@@ -162,11 +148,11 @@ async function processEvent(event, contract) {
       .replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ${symbol} ($${parseFloat(
       (readableAmount * price).toFixed(2)
     )})</b>
-👤 <a href='https://${
-      network === "arb" ? "arbiscan" : "etherscan"
-    }.io/address/${event.returnValues.from}'>User</a> / <a href="https://${
-      network === "arb" ? "arbiscan" : "etherscan"
-    }.io/tx/${event.transactionHash}">TX</a>
+👤 <a href="https://arbiscan.io/address/${
+      event.returnValues.from
+    }">User</a> / <a href="https://arbiscan.io/tx/${
+      event.transactionHash
+    }">TX</a>
 ${price && `🏷 Price <b>$${parseFloat(price.toFixed(3))}</b>`}
 ${
   marketCap &&
@@ -175,8 +161,8 @@ ${
     .replace(/\B(?=(\d{3})+(?!\d))/g, " ")}</b>`
 }
 
-<a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/staking'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a> 
-        `;
+<a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/staking'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a>
+`;
 
     try {
       await Promise.all(
@@ -198,7 +184,11 @@ ${
       );
       return true;
     } catch (error) {
-      console.error(`Failed to send photo to chat ${chatId}:`, error);
+      if (error.code === "EAI_AGAIN" || error.code === "EFATAL") {
+        console.error("Network error occurred:", error);
+      } else {
+        console.error("Failed to send photo:", error);
+      }
       return false;
     }
   }
