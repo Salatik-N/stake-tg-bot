@@ -13,6 +13,7 @@ const {
   getwTAOData,
 } = require("./utils");
 
+const tgChatsPath = path.join(__dirname, "tg-chats.json");
 const token = process.env.BOT_API_KEY;
 const bot = new Telegraf(token);
 
@@ -69,7 +70,7 @@ let retryInterval = 5000;
 });
 
 async function processQueue() {
-  if (isProcessing || eventQueue.length === 0) {
+  if (isProcessing) {
     return;
   }
 
