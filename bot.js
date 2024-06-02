@@ -182,29 +182,25 @@ ${
 <a href='https://www.taobank.ai/'>Home</a> | <a href='https://app.taobank.ai/home'>Buy</a> | <a href='https://app.taobank.ai/staking'>Staking</a> | <a href='https://docs.taobank.ai/'>Docs</a>
 `;
 
-    try {
-      await Promise.all(
-        subscribedChats.map(async (chatId) => {
-          const form = new FormData();
-          form.append("chat_id", chatId);
-          form.append("photo", fs.createReadStream(photoPath));
-          form.append("caption", caption);
-          form.append("parse_mode", "HTML");
+    for (const chatId of subscribedChats) {
+      try {
+        const form = new FormData();
+        form.append("chat_id", chatId);
+        form.append("photo", fs.createReadStream(photoPath));
+        form.append("caption", caption);
+        form.append("parse_mode", "HTML");
 
-          await axios.post(
-            `https://api.telegram.org/bot${token}/sendPhoto`,
-            form,
-            {
-              headers: form.getHeaders(),
-            }
-          );
-        })
-      );
-      console.log("Photo sent");
-      return true;
-    } catch (error) {
-      console.error("Failed to send photo:", error);
-      return false;
+        await axios.post(
+          `https://api.telegram.org/bot${token}/sendPhoto`,
+          form,
+          {
+            headers: form.getHeaders(),
+          }
+        );
+        console.log(`Photo sent to chat ${chatId}`);
+      } catch (error) {
+        console.error(`Failed to send photo to chat ${chatId}:`, error);
+      }
     }
   }
 
