@@ -62,7 +62,7 @@ let isProcessing = false;
     })
     .on("data", (event) => {
       eventQueue.push({ event, contract });
-      console.log("Event added to queue:", event);
+      console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
       processQueue();
     });
 });
@@ -78,10 +78,18 @@ async function processQueue() {
     const { event, contract } = eventQueue[0];
     const success = await processEvent(event, contract);
     if (success) {
-      console.log(`Event processed successfully: ${event.transactionHash}`);
+      console.log(
+        `[${new Date().toISOString()}] Event processed successfully: ${
+          event.transactionHash
+        }`
+      );
       eventQueue.shift();
     } else {
-      console.error(`Failed to process event: ${event.transactionHash}`);
+      console.error(
+        `[${new Date().toISOString()}] Failed to process event: ${
+          event.transactionHash
+        }`
+      );
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
