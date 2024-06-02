@@ -13,7 +13,6 @@ const {
   getwTAOData,
 } = require("./utils");
 
-const tgChatsPath = path.join(__dirname, "tg-chats.json");
 const token = process.env.BOT_API_KEY;
 const bot = new Telegraf(token);
 
@@ -53,16 +52,42 @@ Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
 
 bot.launch();
 
+let eventQueue = [];
+let isProcessing = false;
+
 [tbankContract, taousdContract, wtaoContract].forEach((contract) => {
   contract.events
     .Transfer({
       fromBlock: "latest",
     })
-    .on("data", async (event) => {
-      console.log("Event received:", event);
-      await processEvent(event, contract);
+    .on("data", (event) => {
+      eventQueue.push({ event, contract });
+      console.log("Event added to queue:", event);
+      processQueue();
     });
 });
+
+async function processQueue() {
+  if (isProcessing || eventQueue.length === 0) {
+    return;
+  }
+
+  isProcessing = true;
+
+  while (eventQueue.length > 0) {
+    const { event, contract } = eventQueue[0];
+    const success = await processEvent(event, contract);
+    if (success) {
+      console.log(`Event processed successfully: ${event.transactionHash}`);
+      eventQueue.shift();
+    } else {
+      console.error(`Failed to process event: ${event.transactionHash}`);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+
+  isProcessing = false;
+}
 
 async function processEvent(event, contract) {
   const subscribedChats = await getSubscribedChats();
@@ -70,8 +95,10 @@ async function processEvent(event, contract) {
   if (subscribedChats.length > 0) {
     let tokenData;
     let decimals;
+    let network;
 
     try {
+      console.log("Try to fetch token data");
       if (
         event.address.toLowerCase() ===
           "0x05cbef357cb14f9861c01f90ac7d5c90ce0ef05e".toLowerCase() &&
@@ -80,6 +107,7 @@ async function processEvent(event, contract) {
       ) {
         tokenData = await getTBANKData("taobank");
         decimals = 18;
+        network = "arb";
       } else if (
         event.address.toLowerCase() ===
           "0x966570a84709d693463cdd69dcadb0121b2c9d26".toLowerCase() &&
@@ -88,6 +116,7 @@ async function processEvent(event, contract) {
       ) {
         tokenData = await gettaoUSDData(event.address);
         decimals = 18;
+        network = "arb";
       } else if (
         event.address.toLowerCase() ===
           "0x77e06c9eccf2e797fd462a92b6d7642ef85b0a44".toLowerCase() &&
@@ -98,11 +127,11 @@ async function processEvent(event, contract) {
         decimals = 9;
       } else {
         console.log("Not staking");
-        return;
+        return true;
       }
     } catch (error) {
       console.error("Failed to fetch token data:", error);
-      return;
+      return false;
     }
 
     const name = await contract.methods.name().call();
@@ -122,11 +151,11 @@ async function processEvent(event, contract) {
       .replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ${symbol} ($${parseFloat(
       (readableAmount * price).toFixed(2)
     )})</b>
-👤 <a href="https://arbiscan.io/address/${
-      event.returnValues.from
-    }">User</a> / <a href="https://arbiscan.io/tx/${
-      event.transactionHash
-    }">TX</a>
+👤 <a href="https://${
+      network === "arb" ? "arbiscan" : "etherscan"
+    }.io/address/${event.returnValues.from}">User</a> / <a href="https://${
+      network === "arb" ? "arbiscan" : "etherscan"
+    }.io/tx/${event.transactionHash}">TX</a>
 ${price && `🏷 Price <b>$${parseFloat(price.toFixed(3))}</b>`}
 ${
   marketCap &&
@@ -156,8 +185,13 @@ ${
           );
         })
       );
+      console.log("Photo sent");
+      return true;
     } catch (error) {
       console.error("Failed to send photo:", error);
+      return false;
     }
   }
+
+  return true;
 }
