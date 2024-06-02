@@ -40,7 +40,7 @@ bot.command("stop", (ctx) => {
 
 bot.on("message", (ctx) => {
   const chatId = ctx.chat.id;
-  if (ctx.chat.type === "private") {
+  if (chatId === "private") {
     const hello = `
 Send <b>/start</b> to subscribe or <b>/stop</b> to unsubscribe.
 
@@ -54,6 +54,7 @@ bot.launch();
 
 let eventQueue = [];
 let isProcessing = false;
+let timeoutId = null;
 
 [tbankContract, taousdContract, wtaoContract].forEach((contract) => {
   contract.events
@@ -74,27 +75,33 @@ async function processQueue() {
 
   isProcessing = true;
 
-  while (eventQueue.length > 0) {
-    const { event, contract } = eventQueue[0];
-    const success = await processEvent(event, contract);
-    if (success) {
-      console.log(
-        `[${new Date().toISOString()}] Event processed successfully: ${
-          event.transactionHash
-        }`
-      );
-      eventQueue.shift();
-    } else {
-      console.error(
-        `[${new Date().toISOString()}] Failed to process event: ${
-          event.transactionHash
-        }`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+  const { event, contract } = eventQueue[0];
+  const success = await processEvent(event, contract);
+  if (success) {
+    console.log(
+      `[${new Date().toISOString()}] Event processed successfully: ${
+        event.transactionHash
+      }`
+    );
+    eventQueue.shift();
+    isProcessing = false;
+    if (eventQueue.length > 0) {
+      processQueue();
     }
+  } else {
+    console.error(
+      `[${new Date().toISOString()}] Failed to process event: ${
+        event.transactionHash
+      }`
+    );
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      isProcessing = false;
+      processQueue();
+    }, 5000);
   }
-
-  isProcessing = false;
 }
 
 async function processEvent(event, contract) {
