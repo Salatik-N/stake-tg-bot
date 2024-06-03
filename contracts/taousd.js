@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { Web3 } = require("web3");
 const abiUSD = require("../abiUSD.json");
 

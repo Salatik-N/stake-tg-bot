@@ -1,3 +1,5 @@
+require("dotenv").config();
+const { Web3 } = require("web3");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
@@ -29,8 +31,8 @@ async function gettaoUSDData(tokenId) {
   }
 }
 
-async function getwTAOData(tokenId) {
-  const url = `https://api.geckoterminal.com/api/v2/networks/eth/tokens/${tokenId}`;
+async function getwTAOData() {
+  const url = `https://api.geckoterminal.com/api/v2/networks/eth/tokens/0x77E06c9eCCf2E797fd462A92B6D7642EF85b0A44`;
   try {
     const response = await fetch(url);
     const responseJSON = await response.json();
@@ -100,6 +102,39 @@ function getSubscribedChats() {
   });
 }
 
+const ethWeb3Provider = new Web3.providers.WebsocketProvider(
+  `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`
+);
+const ethWeb3 = new Web3(ethWeb3Provider);
+
+const arbWeb3Provider = new Web3.providers.WebsocketProvider(
+  `wss://arbitrum-mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`
+);
+const arbWeb3 = new Web3(arbWeb3Provider);
+
+async function getTransactionInfo(txHash, web3) {
+  try {
+    const transaction = await web3.eth.getTransaction(txHash);
+
+    return transaction.input.slice(10);
+  } catch (error) {
+    console.error("Error fetching transaction info:", error);
+    return null;
+  }
+}
+
+async function decodeTransaction(txHash, network) {
+  const web3 = network === "arbitrum" ? arbWeb3 : ethWeb3;
+  const inputData = await getTransactionInfo(txHash, web3);
+  if (inputData) {
+    const decodedParameters = web3.eth.abi.decodeParameters(
+      ["uint256"],
+      inputData
+    );
+    return decodedParameters[0];
+  }
+}
+
 module.exports = {
   addChatId,
   removeChatId,
@@ -107,4 +142,5 @@ module.exports = {
   getTBANKData,
   gettaoUSDData,
   getwTAOData,
+  decodeTransaction,
 };

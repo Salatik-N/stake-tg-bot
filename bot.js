@@ -11,14 +11,16 @@ const {
   getTBANKData,
   gettaoUSDData,
   getwTAOData,
+  decodeTransaction,
 } = require("./utils");
-
 const token = process.env.BOT_API_KEY;
 const bot = new Telegraf(token);
 
 const tbankContract = require("./contracts/tbank");
+const tbankStakeContract = require("./contracts/tbankStake");
 const taousdContract = require("./contracts/taousd");
 const wtaoContract = require("./contracts/wtao");
+const wtaoStakeContract = require("./contracts/wtaoStake");
 
 bot.catch((err, ctx) => {
   console.log(`Polling error for ${ctx.updateType}`, err);
@@ -56,17 +58,35 @@ let eventQueue = [];
 let isProcessing = false;
 let timeoutId = null;
 
-[tbankContract, taousdContract, wtaoContract].forEach((contract) => {
-  contract.events
-    .Transfer({
-      fromBlock: "latest",
-    })
-    .on("data", (event) => {
-      eventQueue.push({ event, contract });
-      console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
-      processQueue();
-    });
-});
+tbankStakeContract.events
+  .StakeChanged({
+    fromBlock: "latest",
+  })
+  .on("data", (event) => {
+    eventQueue.push({ event, contract: tbankContract });
+    console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
+    processQueue();
+  });
+
+taousdContract.events
+  .Transfer({
+    fromBlock: "latest",
+  })
+  .on("data", (event) => {
+    eventQueue.push({ event, contract });
+    console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
+    processQueue();
+  });
+
+wtaoStakeContract.events
+  .Staked({
+    fromBlock: "latest",
+  })
+  .on("data", (event) => {
+    eventQueue.push({ event, contract: wtaoContract });
+    console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
+    processQueue();
+  });
 
 async function processQueue() {
   if (isProcessing || eventQueue.length === 0) {
@@ -111,18 +131,24 @@ async function processEvent(event, contract) {
     let tokenData;
     let decimals;
     let network;
+    let price;
+    let readableAmount;
+    let user;
 
     try {
       console.log("Try to fetch token data");
       if (
         event.address.toLowerCase() ===
-          "0x05cbef357cb14f9861c01f90ac7d5c90ce0ef05e".toLowerCase() &&
-        event.returnValues.to.toLowerCase() ===
-          "0xfce658b6e7B93F9c8281bbFd93394fBfd04A1402".toLowerCase()
+        "0xfce658b6e7B93F9c8281bbFd93394fBfd04A1402".toLowerCase()
       ) {
         tokenData = await getTBANKData("taobank");
+        network = "arbitrum";
         decimals = 18;
-        network = "arb";
+        price = tokenData.price;
+        readableAmount =
+          Number(await decodeTransaction(event.transactionHash, network)) /
+          Math.pow(10, decimals);
+        user = event.returnValues._staker;
       } else if (
         event.address.toLowerCase() ===
           "0x966570a84709d693463cdd69dcadb0121b2c9d26".toLowerCase() &&
@@ -130,16 +156,23 @@ async function processEvent(event, contract) {
           "0xDf7b328d07FD11F4CC7199E17719cde7D2971DA1".toLowerCase()
       ) {
         tokenData = await gettaoUSDData(event.address);
+        network = "arbitrum";
         decimals = 18;
-        network = "arb";
+        price = tokenData.price;
+        readableAmount =
+          Number(event.returnValues.value) / Math.pow(10, decimals);
+        user = event.returnValues.from;
       } else if (
         event.address.toLowerCase() ===
-          "0x77e06c9eccf2e797fd462a92b6d7642ef85b0a44".toLowerCase() &&
-        event.returnValues.to.toLowerCase() ===
-          "0x3E0858F65aBF8606103f2c6B98138E4208cC795B".toLowerCase()
+        "0x3E0858F65aBF8606103f2c6B98138E4208cC795B".toLowerCase()
       ) {
-        tokenData = await getwTAOData(event.address);
+        tokenData = await getwTAOData();
+        network = "ethereum";
         decimals = 9;
+        price = tokenData.price;
+        readableAmount =
+          Number(event.returnValues.amount) / Math.pow(10, decimals);
+        user = event.returnValues.user;
       } else {
         console.log("Not staking");
         return true;
@@ -152,11 +185,8 @@ async function processEvent(event, contract) {
     const name = await contract.methods.name().call();
     const symbol = await contract.methods.symbol().call();
     const totalSupply = await contract.methods.totalSupply().call();
-
-    const price = tokenData.price;
     const marketCap = price * (Number(totalSupply) / Math.pow(10, decimals));
-    const readableAmount =
-      Number(event.returnValues.value) / Math.pow(10, decimals);
+
     const photoPath = path.join(__dirname, "images", "staking.jpg");
     const caption = `
 <b><a href='https://t.me/taobnk'>${name}</a> Staked!</b>
@@ -167,9 +197,9 @@ async function processEvent(event, contract) {
       (readableAmount * price).toFixed(2)
     )})</b>
 👤 <a href="https://${
-      network === "arb" ? "arbiscan" : "etherscan"
-    }.io/address/${event.returnValues.from}">User</a> / <a href="https://${
-      network === "arb" ? "arbiscan" : "etherscan"
+      network === "arbitrum" ? "arbiscan" : "etherscan"
+    }.io/address/${user}">User</a> / <a href="https://${
+      network === "arbitrum" ? "arbiscan" : "etherscan"
     }.io/tx/${event.transactionHash}">TX</a>
 ${price && `🏷 Price <b>$${parseFloat(price.toFixed(3))}</b>`}
 ${
@@ -197,7 +227,6 @@ ${
             headers: form.getHeaders(),
           }
         );
-        console.log(`Photo sent to chat ${chatId}`);
       } catch (error) {
         console.error(`Failed to send photo to chat ${chatId}:`, error);
       }
