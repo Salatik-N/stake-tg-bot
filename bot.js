@@ -73,7 +73,7 @@ taousdContract.events
     fromBlock: "latest",
   })
   .on("data", (event) => {
-    eventQueue.push({ event, contract });
+    eventQueue.push({ event, contract: taousdContract });
     console.log(`[${new Date().toISOString()}] Event added to queue:`, event);
     processQueue();
   });
