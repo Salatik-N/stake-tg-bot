@@ -17,7 +17,6 @@ const token = process.env.BOT_API_KEY;
 const bot = new Telegraf(token);
 
 const tbankContract = require("./contracts/tbank");
-const tbankStakeContract = require("./contracts/tbankStake");
 const taousdContract = require("./contracts/taousd");
 const wtaoContract = require("./contracts/wtao");
 const wtaoStakeContract = require("./contracts/wtaoStake");
@@ -58,8 +57,8 @@ let eventQueue = [];
 let isProcessing = false;
 let timeoutId = null;
 
-tbankStakeContract.events
-  .StakeChanged({
+tbankContract.events
+  .Transfer({
     fromBlock: "latest",
   })
   .on("data", (event) => {
@@ -139,16 +138,17 @@ async function processEvent(event, contract) {
       console.log("Try to fetch token data");
       if (
         event.address.toLowerCase() ===
-        "0xfce658b6e7B93F9c8281bbFd93394fBfd04A1402".toLowerCase()
+          "0x05cBeF357CB14F9861C01F90AC7d5C90CE0ef05e".toLowerCase() &&
+        event.returnValues.to.toLowerCase() ===
+          "0xfce658b6e7B93F9c8281bbFd93394fBfd04A1402".toLowerCase()
       ) {
         tokenData = await getTBANKData("taobank");
         network = "arbitrum";
         decimals = 18;
         price = tokenData.price;
         readableAmount =
-          Number(await decodeTransaction(event.transactionHash, network)) /
-          Math.pow(10, decimals);
-        user = event.returnValues._staker;
+          Number(event.returnValues.value) / Math.pow(10, decimals);
+        user = event.returnValues.from;
       } else if (
         event.address.toLowerCase() ===
           "0x966570a84709d693463cdd69dcadb0121b2c9d26".toLowerCase() &&
