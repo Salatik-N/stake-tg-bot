@@ -7,7 +7,7 @@ const web3 = new Web3();
 const debug = (...messages) => console.log(...messages);
 
 /**
- * Refreshes provider instance and attaches even handlers to it
+ * Refreshes provider instance and attaches event handlers to it
  */
 function refreshProvider(web3Obj, providerUrl) {
   let retries = 0;
@@ -19,20 +19,43 @@ function refreshProvider(web3Obj, providerUrl) {
 
       if (retries > 5) {
         debug(`Max retries of 5 exceeding: ${retries} times tried`);
-        return setTimeout(refreshProvider, 5000);
+        return setTimeout(() => refreshProvider(web3Obj, providerUrl), 5000);
       }
     } else {
-      debug(`Reconnecting web3 provider ${config.eth.provider}`);
+      debug(`Reconnecting web3 provider ${providerUrl}`);
       refreshProvider(web3Obj, providerUrl);
     }
 
     return null;
   }
 
-  const provider = new Web3.providers.WebsocketProvider(providerUrl);
+  const provider = new Web3.providers.WebsocketProvider(providerUrl, {
+    timeout: 30000,
 
-  provider.on("end", () => retry());
-  provider.on("error", () => retry());
+    clientConfig: {
+      maxReceivedFrameSize: 100000000,
+      maxReceivedMessageSize: 100000000,
+      keepalive: true,
+      keepaliveInterval: -1,
+    },
+
+    reconnect: {
+      auto: true,
+      delay: 1000,
+      maxAttempts: 10,
+      onTimeout: false,
+    },
+  });
+
+  provider.on("end", (event) => {
+    debug("Websocket ended", event);
+    retry(event);
+  });
+
+  provider.on("error", (error) => {
+    debug("Websocket error", error);
+    retry(error);
+  });
 
   web3Obj.setProvider(provider);
 

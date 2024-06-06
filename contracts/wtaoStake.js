@@ -29,10 +29,33 @@ function refreshProvider(web3Obj, providerUrl) {
     return null;
   }
 
-  const provider = new Web3.providers.WebsocketProvider(providerUrl);
+  const provider = new Web3.providers.WebsocketProvider(providerUrl, {
+    timeout: 30000,
 
-  provider.on("end", () => retry());
-  provider.on("error", () => retry());
+    clientConfig: {
+      maxReceivedFrameSize: 100000000,
+      maxReceivedMessageSize: 100000000,
+      keepalive: true,
+      keepaliveInterval: -1,
+    },
+
+    reconnect: {
+      auto: true,
+      delay: 1000,
+      maxAttempts: 10,
+      onTimeout: false,
+    },
+  });
+
+  provider.on("end", (event) => {
+    debug("Websocket ended", event);
+    retry(event);
+  });
+
+  provider.on("error", (error) => {
+    debug("Websocket error", error);
+    retry(error);
+  });
 
   web3Obj.setProvider(provider);
 
