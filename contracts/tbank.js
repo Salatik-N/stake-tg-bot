@@ -30,21 +30,24 @@ function refreshProvider(web3Obj, providerUrl) {
   }
 
   const provider = new Web3.providers.WebsocketProvider(providerUrl, {
-    timeout: 30000,
-
     clientConfig: {
-      maxReceivedFrameSize: 100000000,
-      maxReceivedMessageSize: 100000000,
       keepalive: true,
-      keepaliveInterval: -1,
+      keepaliveInterval: 60000,
     },
-
     reconnect: {
       auto: true,
-      delay: 1000,
-      maxAttempts: 10,
+      delay: 5000,
+      maxAttempts: 5,
       onTimeout: false,
     },
+  });
+  provider.on("connect", () => {
+    console.log("Websocket connected.");
+  });
+
+  provider.on("close", (event) => {
+    console.log("Websocket closed.", event);
+    retry(event);
   });
 
   provider.on("end", (event) => {
