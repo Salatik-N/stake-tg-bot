@@ -61,6 +61,11 @@ function refreshProvider(web3Obj, providerUrl) {
     retry(error);
   });
 
+  provider.on("reconnect", function () {
+    console.log("Websocket reconnect");
+    retry(error);
+  });
+
   web3Obj.setProvider(provider);
 
   debug("New Web3 provider initiated");
@@ -70,6 +75,12 @@ function refreshProvider(web3Obj, providerUrl) {
 
 const providerUrl = `wss://arbitrum-mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`;
 refreshProvider(web3, providerUrl);
+
+const twoHoursInMilliseconds = 2 * 60 * 60 * 1000;
+setInterval(() => {
+  debug("Reconnecting Web3 provider every 2 hours");
+  refreshProvider(web3, providerUrl);
+}, twoHoursInMilliseconds);
 
 const address = "0x966570A84709D693463CDD69dCadb0121b2C9d26";
 const contract = new web3.eth.Contract(abiUSD, address);
