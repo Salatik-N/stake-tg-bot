@@ -7,11 +7,18 @@ const web3 = new Web3();
 const debug = (...messages) => console.log(...messages);
 
 let currentProvider = null;
+let isRefreshing = false;
 
 /**
  * Refreshes provider instance and attaches event handlers to it
  */
 function refreshProvider(web3Obj, providerUrl) {
+  if (isRefreshing) {
+    debug("Provider is already refreshing, skipping this call.");
+    return;
+  }
+
+  isRefreshing = true;
   let retries = 0;
 
   function retry(event) {
@@ -21,6 +28,7 @@ function refreshProvider(web3Obj, providerUrl) {
 
       if (retries > 5) {
         debug(`Max retries of 5 exceeding: ${retries} times tried`);
+        isRefreshing = false;
         return setTimeout(() => refreshProvider(web3Obj, providerUrl), 5000);
       }
     } else {
@@ -52,6 +60,7 @@ function refreshProvider(web3Obj, providerUrl) {
 
   provider.on("connect", () => {
     console.log("Websocket connected.");
+    isRefreshing = false;
   });
 
   provider.on("close", (event) => {
