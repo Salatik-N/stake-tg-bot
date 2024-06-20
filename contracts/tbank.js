@@ -6,6 +6,8 @@ const web3 = new Web3();
 
 const debug = (...messages) => console.log(...messages);
 
+let currentProvider = null;
+
 /**
  * Refreshes provider instance and attaches event handlers to it
  */
@@ -29,6 +31,12 @@ function refreshProvider(web3Obj, providerUrl) {
     return null;
   }
 
+  // Close the existing provider connection if there is one
+  if (currentProvider) {
+    currentProvider.disconnect(1000, "Provider Refresh");
+    debug("Existing Web3 provider connection closed");
+  }
+
   const provider = new Web3.providers.WebsocketProvider(providerUrl, {
     clientConfig: {
       keepalive: true,
@@ -41,6 +49,7 @@ function refreshProvider(web3Obj, providerUrl) {
       onTimeout: false,
     },
   });
+
   provider.on("connect", () => {
     console.log("Websocket connected.");
   });
@@ -62,10 +71,11 @@ function refreshProvider(web3Obj, providerUrl) {
 
   provider.on("reconnect", function () {
     console.log("Websocket reconnect");
-    retry(error);
+    retry();
   });
 
   web3Obj.setProvider(provider);
+  currentProvider = provider; // Update the current provider
 
   debug("New Web3 provider initiated");
 
