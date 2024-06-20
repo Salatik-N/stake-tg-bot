@@ -12,26 +12,6 @@ let currentProvider = null;
  * Refreshes provider instance and attaches event handlers to it
  */
 function refreshProvider(web3Obj, providerUrl) {
-  let retries = 0;
-
-  function retry(event) {
-    if (event) {
-      debug("Web3 provider disconnected or errored.");
-      retries += 1;
-
-      if (retries > 5) {
-        debug(`Max retries of 5 exceeding: ${retries} times tried`);
-        return setTimeout(() => refreshProvider(web3Obj, providerUrl), 5000);
-      }
-    } else {
-      debug(`Reconnecting web3 provider ${providerUrl}`);
-      refreshProvider(web3Obj, providerUrl);
-    }
-
-    return null;
-  }
-
-  // Close the existing provider connection if there is one
   if (currentProvider) {
     currentProvider.disconnect(1000, "Provider Refresh");
     debug("Existing Web3 provider connection closed");
@@ -52,26 +32,6 @@ function refreshProvider(web3Obj, providerUrl) {
 
   provider.on("connect", () => {
     console.log("Websocket connected.");
-  });
-
-  provider.on("close", (event) => {
-    console.log("Websocket closed.", event);
-    retry(event);
-  });
-
-  provider.on("end", (event) => {
-    debug("Websocket ended", event);
-    retry(event);
-  });
-
-  provider.on("error", (error) => {
-    debug("Websocket error", error);
-    retry(error);
-  });
-
-  provider.on("reconnect", function () {
-    console.log("Websocket reconnect");
-    retry();
   });
 
   web3Obj.setProvider(provider);
