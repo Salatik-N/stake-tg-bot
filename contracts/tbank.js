@@ -63,9 +63,8 @@ function refreshProvider(web3Obj, providerUrl) {
 }
 
 const providerUrl = `wss://arbitrum-mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`;
-refreshProvider(web3, providerUrl);
 
-const twoHoursInMilliseconds = 2 * 1000;
+const twoHoursInMilliseconds = 2 * 60 * 1000;
 setInterval(() => {
   debug("Reconnecting Web3 provider every 2 hours");
   refreshProvider(web3, providerUrl);
