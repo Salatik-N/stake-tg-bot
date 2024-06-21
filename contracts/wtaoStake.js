@@ -7,14 +7,28 @@ const web3 = new Web3();
 const debug = (...messages) => console.log(...messages);
 
 let currentProvider = null;
+let isRefreshing = false;
 
 /**
  * Refreshes provider instance and attaches event handlers to it
  */
 function refreshProvider(web3Obj, providerUrl) {
+  if (isRefreshing) {
+    debug("Provider is already refreshing, skipping this call.");
+    return;
+  }
+
+  isRefreshing = true;
+
+  // Close the existing provider connection if there is one
   if (currentProvider) {
-    currentProvider.disconnect(1000, "Provider Refresh");
-    debug("Existing Web3 provider connection closed");
+    currentProvider.removeAllListeners(); // Remove all event listeners
+    try {
+      currentProvider.disconnect(1000, "Provider Refresh");
+      debug("Existing Web3 provider connection closed");
+    } catch (error) {
+      debug("Error closing existing Web3 provider connection", error);
+    }
   }
 
   const provider = new Web3.providers.WebsocketProvider(providerUrl, {
@@ -32,6 +46,12 @@ function refreshProvider(web3Obj, providerUrl) {
 
   provider.on("connect", () => {
     console.log("Websocket connected.");
+    isRefreshing = false; // Reset the flag once connected
+  });
+
+  provider.on("error", (error) => {
+    debug("Websocket error", error);
+    isRefreshing = false; // Reset the flag on error
   });
 
   web3Obj.setProvider(provider);
@@ -45,7 +65,7 @@ function refreshProvider(web3Obj, providerUrl) {
 const providerUrl = `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`;
 refreshProvider(web3, providerUrl);
 
-const twoHoursInMilliseconds = 2 * 60 * 60 * 1000;
+const twoHoursInMilliseconds = 2 * 1000;
 setInterval(() => {
   debug("Reconnecting Web3 provider every 2 hours");
   refreshProvider(web3, providerUrl);
