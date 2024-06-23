@@ -63,12 +63,7 @@ function refreshProvider(web3Obj, providerUrl) {
 }
 
 const providerUrl = `wss://mainnet.infura.io/ws/v3/${process.env.INFURA_TOKEN}`;
-
-const twoHoursInMilliseconds = 2 * 60 * 60 * 1000;
-setInterval(() => {
-  debug("Reconnecting Web3 provider every 2 hours");
-  refreshProvider(web3, providerUrl);
-}, twoHoursInMilliseconds);
+refreshProvider(web3, providerUrl);
 
 const address = "0x3e0858f65abf8606103f2c6b98138e4208cc795b";
 const contract = new web3.eth.Contract(abiStakeWTAO, address);

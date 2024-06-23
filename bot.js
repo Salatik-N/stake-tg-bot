@@ -16,6 +16,12 @@ const {
 const token = process.env.BOT_API_KEY;
 const bot = new Telegraf(token);
 
+// const twoHoursInMilliseconds = 2 * 60 * 60 * 1000;
+// setInterval(() => {
+//   debug("Reconnecting Web3 provider every 2 hours");
+//   refreshProvider(web3, providerUrl);
+// }, twoHoursInMilliseconds);
+
 const tbankContract = require("./contracts/tbank");
 const taousdContract = require("./contracts/taousd");
 const wtaoContract = require("./contracts/wtao");
