@@ -7,19 +7,11 @@ const web3 = new Web3();
 const debug = (...messages) => console.log(...messages);
 
 let currentProvider = null;
-let isRefreshing = false;
 
 /**
  * Refreshes provider instance and attaches event handlers to it
  */
 function refreshProvider(web3Obj, providerUrl) {
-  if (isRefreshing) {
-    debug("Provider is already refreshing, skipping this call.");
-    return;
-  }
-
-  isRefreshing = true;
-
   // Close the existing provider connection if there is one
   if (currentProvider) {
     currentProvider.removeAllListeners(); // Remove all event listeners
@@ -46,12 +38,10 @@ function refreshProvider(web3Obj, providerUrl) {
 
   provider.on("connect", () => {
     console.log("Websocket connected.");
-    isRefreshing = false; // Reset the flag once connected
   });
 
   provider.on("error", (error) => {
     debug("Websocket error", error);
-    isRefreshing = false; // Reset the flag on error
   });
 
   web3Obj.setProvider(provider);
